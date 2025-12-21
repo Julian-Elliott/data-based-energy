@@ -1,0 +1,7 @@
+# Example config.yaml for Home Assistant Data Collection
+# Copy to config.yaml and edit as needed
+
+home_assistant:
+  host: "your-ha-host"
+  port: 8123
+  timeout: 10
