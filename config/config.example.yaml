@@ -1,7 +1,10 @@
 # Example config.yaml for Home Assistant Data Collection
 # Copy to config.yaml and edit as needed
+#
+# For Tailscale users: use your *.ts.net hostname
+# For local access: use your HA IP address
 
 home_assistant:
-  host: "your-ha-host"
+  host: "homeassistant.your-tailnet.ts.net"  # or local IP
   port: 8123
   timeout: 10

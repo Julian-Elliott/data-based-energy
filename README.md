@@ -5,10 +5,12 @@ This project collects state and statistics data from a Home Assistant instance u
 ## Features
 
 - **Modular API client** for Home Assistant (REST API)
+- **Direct MariaDB access** for faster bulk data extraction
+- **SSH tunnel automation** for secure remote database access
 - **Secure secrets management** using `config/secrets.yaml` (never commit secrets!)
 - **Configurable parameters** in `config/config.yaml`
-- **Jupyter notebook** for data exploration
-- **VS Code Python Test integration** for robust testing
+- **Jupyter notebooks** for data exploration and extraction
+- **pytest integration** with VS Code Test Explorer
 
 ## Project Structure
 
@@ -17,20 +19,22 @@ This project collects state and statistics data from a Home Assistant instance u
 ├── config/
 │   ├── config.yaml            # Non-secret config (host, port, etc.)
 │   ├── config.example.yaml    # Template for config.yaml
-│   ├── secrets.yaml           # Home Assistant token/URL (gitignored)
+│   ├── secrets.yaml           # Credentials and tokens (gitignored)
 │   └── secrets.example.yaml   # Template for secrets.yaml
-├── data/
-│   └── raw/                   # Collected data (gitignored)
+├── data/                       # Collected data (gitignored)
 ├── notebooks/
-│   └── 01_explore_api.ipynb   # Example notebook
+│   ├── 01_explore_api.ipynb   # API exploration
+│   └── 02_extract_data.ipynb  # MariaDB data extraction
 ├── src/
 │   ├── __init__.py
 │   ├── config.py              # Config loader
-│   ├── home_assistant.py      # Main API client
-│   └── secrets.py             # Secrets loader
+│   ├── home_assistant.py      # REST API client
+│   ├── secrets.py             # Secrets loader
+│   └── tunnel.py              # SSH tunnel manager
 ├── tests/
 │   ├── __init__.py
-│   └── test_connection.py     # Automated connection test
+│   └── test_connection.py     # pytest connection tests
+├── pytest.ini                  # pytest configuration
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -50,11 +54,12 @@ This project collects state and statistics data from a Home Assistant instance u
 3. **Test the connection:**
    - Run tests in VS Code (Testing sidebar) or:
      ```sh
-     python -m unittest discover -s tests
+     pytest
      ```
-   - You should see a successful connection message.
+   - All connectivity tests should pass.
 4. **Explore data in Jupyter:**
-   - Open `notebooks/01_explore_api.ipynb` in VS Code or Jupyter Lab.
+   - `notebooks/01_explore_api.ipynb` - Explore the REST API
+   - `notebooks/02_extract_data.ipynb` - Extract data from MariaDB
 
 ## Home Assistant URL and Token Setup
 
@@ -76,15 +81,36 @@ This project collects state and statistics data from a Home Assistant instance u
 > - Treat your long-lived token like a password. **Never share it or commit it to version control.**
 > - If you believe your token has been exposed, revoke it immediately from your Home Assistant profile.
 
+## Data Access Methods
+
+This project supports two methods for accessing Home Assistant data:
+
+### REST API (Recommended for real-time data)
+- Uses the `HomeAssistantClient` class in `src/home_assistant.py`
+- Good for: current states, triggering services, small queries
+- See `notebooks/01_explore_api.ipynb`
+
+### MariaDB Direct Access (Recommended for bulk extraction)
+- Uses SSH tunnel through Tailscale for secure access
+- The `SSHTunnel` class in `src/tunnel.py` manages the connection
+- Good for: historical data, statistics, large exports
+- See `notebooks/02_extract_data.ipynb`
+
+**Note:** MariaDB access requires the MariaDB and SSH/Terminal add-ons on Home Assistant.
+
 ## Security
 
 - **Never commit `config/secrets.yaml`!** It is gitignored by default.
 - Use `config.example.yaml` and `secrets.example.yaml` as templates for sharing.
+- Database access uses SSH tunneling over Tailscale VPN for security.
+- Consider using a read-only database user for data extraction.
 
 ## Testing
 
-- Tests are in the `tests/` folder and use the VS Code Python Test extension.
-- Imports use the `src.` prefix for compatibility.
+- Tests use **pytest** and integrate with VS Code Test Explorer
+- Run all tests: `pytest`
+- Run specific tests: `pytest -k tunnel` or `pytest -k mariadb`
+- Tests verify: Tailscale connectivity, SSH tunnel, MariaDB, Home Assistant API
 
 ## Extending
 

@@ -1,7 +1,4 @@
 # Secrets - NEVER commit these
-
-.gitignore
-# Secrets (in config/)
 config/secrets.yaml
 config/config.yaml
 .env
