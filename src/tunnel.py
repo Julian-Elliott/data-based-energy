@@ -14,10 +14,20 @@ from src.secrets import load_secrets
 class SSHTunnel:
     """Manages SSH tunnel for MariaDB access."""
 
-    def __init__(self):
-        """Initialize tunnel with config from secrets."""
-        secrets = load_secrets()
-        tunnel_config = secrets.get("ssh_tunnel", {})
+    def __init__(self, server_name: Optional[str] = None):
+        """Initialize tunnel with config from secrets.
+        
+        Args:
+            server_name: Name of the server. If None, uses default.
+        """
+        from .secrets import get_tunnel_config
+        from .config import get_default_server
+        
+        if server_name is None:
+            server_name = get_default_server()
+        
+        self.server_name = server_name
+        tunnel_config = get_tunnel_config(server_name)
 
         # All config must be in secrets.yaml - no defaults for security
         self.ssh_host = tunnel_config.get("host")
@@ -29,8 +39,8 @@ class SSHTunnel:
         
         if not self.ssh_host:
             raise ValueError(
-                "SSH tunnel host not configured. "
-                "Set ssh_tunnel.host in config/secrets.yaml"
+                f"SSH tunnel host not configured for server '{server_name}'. "
+                f"Set ssh_tunnel.servers.{server_name}.host in config/secrets.yaml"
             )
 
         self._process: Optional[subprocess.Popen] = None
@@ -161,22 +171,39 @@ class SSHTunnel:
 
 
 # Module-level convenience functions
-_tunnel: Optional[SSHTunnel] = None
+_tunnels: dict[str, SSHTunnel] = {}
 
 
-def get_tunnel() -> SSHTunnel:
-    """Get or create the global tunnel instance."""
-    global _tunnel
-    if _tunnel is None:
-        _tunnel = SSHTunnel()
-    return _tunnel
+def get_tunnel(server_name: Optional[str] = None) -> SSHTunnel:
+    """Get or create a tunnel instance for a server.
+    
+    Args:
+        server_name: Server name. If None, uses default.
+    """
+    from .config import get_default_server
+    
+    if server_name is None:
+        server_name = get_default_server()
+    
+    global _tunnels
+    if server_name not in _tunnels:
+        _tunnels[server_name] = SSHTunnel(server_name)
+    return _tunnels[server_name]
 
 
-def ensure_tunnel() -> bool:
-    """Ensure the SSH tunnel is connected."""
-    return get_tunnel().ensure_connected()
+def ensure_tunnel(server_name: Optional[str] = None) -> bool:
+    """Ensure the SSH tunnel is connected.
+    
+    Args:
+        server_name: Server name. If None, uses default.
+    """
+    return get_tunnel(server_name).ensure_connected()
 
 
-def tunnel_status() -> dict:
-    """Get tunnel status."""
-    return get_tunnel().get_status()
+def tunnel_status(server_name: Optional[str] = None) -> dict:
+    """Get tunnel status.
+    
+    Args:
+        server_name: Server name. If None, uses default.
+    """
+    return get_tunnel(server_name).get_status()

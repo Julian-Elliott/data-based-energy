@@ -12,7 +12,7 @@ from src.secrets import get_ha_credentials
 class HomeAssistantClient:
     """Client for interacting with Home Assistant REST API."""
 
-    def __init__(self, url: Optional[str] = None, token: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, token: Optional[str] = None, server_name: Optional[str] = None):
         """
         Initialize the Home Assistant client.
         Args:
@@ -20,22 +20,26 @@ class HomeAssistantClient:
                 config/secrets.yaml
             token: Long-lived access token. If None, loads from
                 config/secrets.yaml
+            server_name: Server name to use. If None, uses default.
         """
-        from .config import get_ha_config
-        ha_config = get_ha_config()
-        # Prefer explicit url, then config.yaml, then secrets.yaml
+        from .config import get_server_config, get_default_server
+        
+        if server_name is None:
+            server_name = get_default_server()
+        
+        self.server_name = server_name
+        
+        # Prefer explicit url, then build from config
         if url is not None:
             self.url = url
-        elif ha_config.get("host") and ha_config.get("port"):
-            self.url = f"http://{ha_config['host']}:{ha_config['port']}"
         else:
-            secret_url, _ = get_ha_credentials()
+            secret_url, _ = get_ha_credentials(server_name)
             self.url = secret_url
 
         if token is not None:
             self.token = token
         else:
-            _, secret_token = get_ha_credentials()
+            _, secret_token = get_ha_credentials(server_name)
             self.token = secret_token
 
         # Remove trailing slash if present

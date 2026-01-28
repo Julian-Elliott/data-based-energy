@@ -43,19 +43,94 @@ def load_secrets(path: str | Path | None = None) -> dict:
         return yaml.safe_load(f)
 
 
-def get_ha_credentials() -> tuple[str, str]:
+def get_ha_credentials(server_name: str | None = None) -> tuple[str, str]:
     """
     Get Home Assistant URL and token from secrets.
+    Args:
+        server_name: Server name. If None, uses default from config.
     Returns:
         Tuple of (url, token)
     """
+    from .config import get_default_server, get_server_config
+    
+    if server_name is None:
+        server_name = get_default_server()
+    
     secrets = load_secrets()
-    ha_config = secrets.get("home_assistant", {})
-    url = ha_config.get("url")
-    token = ha_config.get("token")
-    if not url or not token:
+    config = get_server_config(server_name)
+    
+    # Get token from secrets
+    ha_secrets = secrets.get("home_assistant", {}).get("servers", {})
+    server_secrets = ha_secrets.get(server_name, {})
+    token = server_secrets.get("token")
+    
+    # Build URL from config
+    host = config.get("host")
+    port = config.get("port", 8123)
+    url = f"http://{host}:{port}"
+    
+    if not token:
         raise ValueError(
-            "Missing Home Assistant credentials in config/secrets.yaml. "
-            "Ensure 'home_assistant.url' and 'home_assistant.token' are set."
+            f"Missing token for server '{server_name}' in config/secrets.yaml. "
+            f"Ensure 'home_assistant.servers.{server_name}.token' is set."
         )
+    
     return url, token
+
+
+def get_all_servers() -> list[str]:
+    """
+    Get list of all configured servers from secrets.
+    Returns:
+        List of server names.
+    """
+    from .config import get_all_servers as config_get_all_servers
+    return config_get_all_servers()
+
+
+def get_db_config(server_name: str | None = None) -> dict:
+    """
+    Get database configuration for a specific server.
+    Args:
+        server_name: Server name. If None, uses default from config.
+    Returns:
+        Database configuration dictionary.
+    """
+    from .config import get_default_server
+    
+    if server_name is None:
+        server_name = get_default_server()
+    
+    secrets = load_secrets()
+    db_servers = secrets.get("database", {}).get("servers", {})
+    
+    if server_name not in db_servers:
+        raise ValueError(
+            f"Database config for server '{server_name}' not found in config/secrets.yaml."
+        )
+    
+    return db_servers[server_name]
+
+
+def get_tunnel_config(server_name: str | None = None) -> dict:
+    """
+    Get SSH tunnel configuration for a specific server.
+    Args:
+        server_name: Server name. If None, uses default from config.
+    Returns:
+        Tunnel configuration dictionary.
+    """
+    from .config import get_default_server
+    
+    if server_name is None:
+        server_name = get_default_server()
+    
+    secrets = load_secrets()
+    tunnel_servers = secrets.get("ssh_tunnel", {}).get("servers", {})
+    
+    if server_name not in tunnel_servers:
+        raise ValueError(
+            f"SSH tunnel config for server '{server_name}' not found in config/secrets.yaml."
+        )
+    
+    return tunnel_servers[server_name]
